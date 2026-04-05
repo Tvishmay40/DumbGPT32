@@ -1,53 +1,43 @@
 # prepare_dataset.py
+import os
 from datasets import load_dataset
 from tqdm import tqdm
 
 # --- Configuration ---
-DATASET_NAME = "lishysf/Twitch_Chat"
+# Suggested: "lparkourer10/twitch_chat" for a larger, higher-quality dataset
+DATASET_NAME = "lparkourer10/twitch_chat" 
 OUTPUT_FILE = "dataset.txt"
-MAX_LINES = 1000000 # Limit to 1 million lines to prevent RAM crashes during training
+TARGET_SIZE_MB = 20  # Stop after writing this many MB of text
 
-print(f"Downloading dataset: {DATASET_NAME}...")
-# Many datasets have a 'train' split by default. 
-# We use streaming=True so it doesn't try to download 50GB to your hard drive all at once.
-try:
-    ds = load_dataset(DATASET_NAME, split="train", streaming=True)
-except Exception as e:
-    print(f"Error loading dataset: {e}")
-    print("Trying without specifying split...")
-    ds = load_dataset(DATASET_NAME, streaming=True)
-    # Get the first available split
-    ds = ds[list(ds.keys())[0]]
+print(f"Loading dataset: {DATASET_NAME}...")
 
-print(f"Extracting text to {OUTPUT_FILE}...")
+# Load with streaming to save local disk space
+ds = load_dataset(DATASET_NAME, split="train", streaming=True)
 
-count = 0
-# Open the file in write mode with UTF-8 encoding
+print(f"Extracting text to {OUTPUT_FILE} (Target: {TARGET_SIZE_MB}MB)...")
+
+text_key = None
+bytes_written = 0
+target_bytes = TARGET_SIZE_MB * 1024 * 1024
+
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-    for item in tqdm(ds, desc="Writing lines"):
-        # Datasets have different column names. 
-        # Twitch chat usually uses 'message', 'body', or 'text'.
-        # This checks for the most common ones.
-        text_content = ""
-        if "message" in item:
-            text_content = str(item["message"])
-        elif "text" in item:
-            text_content = str(item["text"])
-        elif "content" in item:
-            text_content = str(item["content"])
-        else:
-            # Fallback: just grab the first column's data
-            text_content = str(list(item.values())[0])
-
-        # Clean up whitespace and ignore empty messages
-        text_content = text_content.strip()
-        if text_content: 
-            f.write(text_content + "\n")
-            count += 1
+    for item in tqdm(ds, desc="Writing Data"):
+        # Automatically find which key contains the text on the first iteration
+        if text_key is None:
+            for key, value in item.items():
+                if isinstance(value, str) and len(value) > 2:
+                    text_key = key
+                    print(f"Found text in column: '{text_key}'")
+                    break
         
-        # Stop if we hit our memory-safe limit
-        if count >= MAX_LINES:
+        if text_key and item[text_key]:
+            line = str(item[text_key]).strip() + "\n"
+            f.write(line)
+            bytes_written += len(line.encode('utf-8'))
+        
+        # Stop once we reach the target file size
+        if bytes_written >= target_bytes:
             break
 
-print(f"\nSuccess! Wrote {count} lines to {OUTPUT_FILE}.")
-print("You can now run train.py!")
+print(f"\nSuccess! '{OUTPUT_FILE}' is now {bytes_written / (1024*1024):.2f} MB.")
+print("Now you can proceed to 'python train.py'.")
