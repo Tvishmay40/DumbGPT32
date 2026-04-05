@@ -19,4 +19,3 @@ with open('model.raw', 'wb') as f:
         f.write(struct.pack(f'<{len(weights)}f', *weights))
 
 print("Exported raw weights to model.raw")
-print(f"Total weights file size: {f.tell() / 1024:.2f} KB")

@@ -5,14 +5,15 @@ from tqdm import tqdm
 
 # --- Configuration ---
 # Suggested: "lparkourer10/twitch_chat" for a larger, higher-quality dataset
-DATASET_NAME = "lparkourer10/twitch_chat" 
+DATASET_NAME = "roneneldan/TinyStories" 
+SUBSET = ""
 OUTPUT_FILE = "dataset.txt"
-TARGET_SIZE_MB = 20  # Stop after writing this many MB of text
+TARGET_SIZE_MB = 50  # Stop after writing this many MB of text
 
-print(f"Loading dataset: {DATASET_NAME}...")
+print(f"Loading {DATASET_NAME} [{SUBSET}]...")
 
 # Load with streaming to save local disk space
-ds = load_dataset(DATASET_NAME, split="train", streaming=True)
+ds = load_dataset(DATASET_NAME,split="train", streaming=True) #add another argument named ,SUBSET, if needed
 
 print(f"Extracting text to {OUTPUT_FILE} (Target: {TARGET_SIZE_MB}MB)...")
 
